@@ -6,7 +6,7 @@ const WIDTH = 400;
 const HEIGHT = 600;
 const GROUND_Y = 500;
 
-/* -------- Bird -------- */
+/* ---------- Bird ---------- */
 const birdImg = new Image();
 birdImg.src = "player.png";
 
@@ -17,23 +17,24 @@ let bird = {
   velocity: 0
 };
 
-const GRAVITY = 1;
-const JUMP = -9;
+// Slower physics
+const GRAVITY = 0.7;
+const JUMP = -6.5;
 
-/* -------- Pipes -------- */
+/* ---------- Pipes ---------- */
 const PIPE_WIDTH = 60;
 const PIPE_GAP = 190;
-const PIPE_SPEED = 1;
+const PIPE_SPEED = 0.7;
 
 let pipes = [];
 let score = 0;
 let gameOver = false;
 
-/* -------- Background -------- */
+/* ---------- Background ---------- */
 let cloudX1 = 60, cloudX2 = 220, cloudX3 = 360;
 let groundOffset = 0;
 
-/* -------- Helpers -------- */
+/* ---------- Helpers ---------- */
 function addPipePair() {
   const h = 140 + Math.random() * 180;
   pipes.push({ x: WIDTH, y: 0, h, scored: false });
@@ -50,14 +51,16 @@ function resetGame() {
   addPipePair();
 }
 
-/* -------- Controls -------- */
+/* ---------- Controls ---------- */
 document.addEventListener("keydown", e => {
-  if (e.code === "Space" && !gameOver) bird.velocity = JUMP;
+  if (e.code === "Space" && !gameOver) {
+    bird.velocity = JUMP;
+  }
 });
 
 restartBtn.onclick = resetGame;
 
-/* -------- Drawing -------- */
+/* ---------- Drawing helpers ---------- */
 function drawCloud(x, y) {
   ctx.fillStyle = "rgba(255,255,255,0.8)";
   ctx.beginPath();
@@ -113,28 +116,36 @@ function drawTreesFlowers() {
   }
 }
 
-/* -------- Main Loop -------- */
+/* ---------- Main loop ---------- */
 function update() {
   if (gameOver) return;
 
+  // Bird physics
   bird.velocity += GRAVITY;
   bird.y += bird.velocity;
 
-  cloudX1--; cloudX2--; cloudX3--;
+  // Background movement (slower)
+  cloudX1 -= 0.4;
+  cloudX2 -= 0.4;
+  cloudX3 -= 0.4;
+
   if (cloudX1 < -150) cloudX1 = WIDTH;
   if (cloudX2 < -150) cloudX2 = WIDTH + 120;
   if (cloudX3 < -150) cloudX3 = WIDTH + 240;
 
-  groundOffset = (groundOffset + 1) % 10;
+  groundOffset = (groundOffset + 0.4) % 10;
 
+  // Pipes
   pipes.forEach(p => {
     p.x -= PIPE_SPEED;
 
+    // Score when passing pipe
     if (!p.scored && p.y > 0 && p.x + PIPE_WIDTH < bird.x) {
       p.scored = true;
       score++;
     }
 
+    // Collision
     if (
       bird.x < p.x + PIPE_WIDTH &&
       bird.x + bird.size > p.x &&
@@ -144,43 +155,56 @@ function update() {
     }
   });
 
-  if (bird.y < 0 || bird.y + bird.size > HEIGHT) gameOver = true;
+  // Screen bounds only
+  if (bird.y < 0 || bird.y + bird.size > HEIGHT) {
+    gameOver = true;
+  }
 
+  // Remove old pipes
   if (pipes[0].x + PIPE_WIDTH < 0) {
     pipes.splice(0, 2);
     addPipePair();
   }
 
-  if (gameOver) restartBtn.style.display = "block";
+  if (gameOver) {
+    restartBtn.style.display = "block";
+  }
 }
 
 function draw() {
+  // Sky
   const sky = ctx.createLinearGradient(0, 0, 0, HEIGHT);
   sky.addColorStop(0, "#87cdff");
   sky.addColorStop(1, "#f0faff");
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
+  // Clouds
   drawCloud(cloudX1, 90);
   drawCloud(cloudX2, 150);
   drawCloud(cloudX3, 60);
 
+  // Buildings
   for (let i = 0; i < WIDTH; i += 60) {
     const h = 90 + (i % 3) * 35;
     drawBuilding(i, GROUND_Y - h, 55, h);
   }
 
+  // Ground
   ctx.fillStyle = "#5fb05f";
   ctx.fillRect(0, GROUND_Y, WIDTH, HEIGHT - GROUND_Y);
 
   drawGrass();
   drawTreesFlowers();
 
+  // Pipes
   ctx.fillStyle = "#46aa64";
   pipes.forEach(p => ctx.fillRect(p.x, p.y, PIPE_WIDTH, p.h));
 
+  // Bird
   ctx.drawImage(birdImg, bird.x, bird.y, bird.size, bird.size);
 
+  // Score
   ctx.fillStyle = "white";
   ctx.font = "22px Segoe UI";
   ctx.fillText("Score: " + score, 20, 35);
@@ -198,5 +222,6 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
+/* ---------- Start ---------- */
 addPipePair();
 loop();
