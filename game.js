@@ -17,7 +17,6 @@ let bird = {
   velocity: 0
 };
 
-// Slower physics
 const GRAVITY = 0.7;
 const JUMP = -6.5;
 
@@ -34,13 +33,18 @@ let gameOver = false;
 let cloudX1 = 60, cloudX2 = 220, cloudX3 = 360;
 let groundOffset = 0;
 
-/* ---------- Helpers ---------- */
+/* ---------- Pipe creation ---------- */
 function addPipePair() {
-  const h = 140 + Math.random() * 180;
-  pipes.push({ x: WIDTH, y: 0, h, scored: false });
-  pipes.push({ x: WIDTH, y: h + PIPE_GAP, h: HEIGHT, scored: false });
+  const topHeight = 140 + Math.random() * 180;
+  pipes.push({
+    x: WIDTH,
+    top: topHeight,
+    bottom: topHeight + PIPE_GAP,
+    scored: false
+  });
 }
 
+/* ---------- Reset ---------- */
 function resetGame() {
   pipes = [];
   score = 0;
@@ -116,15 +120,13 @@ function drawTreesFlowers() {
   }
 }
 
-/* ---------- Main loop ---------- */
+/* ---------- Update ---------- */
 function update() {
   if (gameOver) return;
 
-  // Bird physics
   bird.velocity += GRAVITY;
   bird.y += bird.velocity;
 
-  // Background movement (slower)
   cloudX1 -= 0.4;
   cloudX2 -= 0.4;
   cloudX3 -= 0.4;
@@ -135,22 +137,24 @@ function update() {
 
   groundOffset = (groundOffset + 0.4) % 10;
 
-  // Pipes
   pipes.forEach(p => {
     p.x -= PIPE_SPEED;
 
-    // Score when passing pipe
-    if (!p.scored && p.y > 0 && p.x + PIPE_WIDTH < bird.x) {
+    // Score
+    if (!p.scored && p.x + PIPE_WIDTH < bird.x) {
       p.scored = true;
       score++;
     }
 
     // Collision
-    if (
+    const hitX =
       bird.x < p.x + PIPE_WIDTH &&
-      bird.x + bird.size > p.x &&
-      (bird.y < p.h || bird.y + bird.size > p.y)
-    ) {
+      bird.x + bird.size > p.x;
+
+    const hitTop = bird.y < p.top;
+    const hitBottom = bird.y + bird.size > p.bottom;
+
+    if (hitX && (hitTop || hitBottom)) {
       gameOver = true;
     }
   });
@@ -162,7 +166,7 @@ function update() {
 
   // Remove old pipes
   if (pipes[0].x + PIPE_WIDTH < 0) {
-    pipes.splice(0, 2);
+    pipes.shift();
     addPipePair();
   }
 
@@ -171,40 +175,37 @@ function update() {
   }
 }
 
+/* ---------- Draw ---------- */
 function draw() {
-  // Sky
   const sky = ctx.createLinearGradient(0, 0, 0, HEIGHT);
   sky.addColorStop(0, "#87cdff");
   sky.addColorStop(1, "#f0faff");
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-  // Clouds
   drawCloud(cloudX1, 90);
   drawCloud(cloudX2, 150);
   drawCloud(cloudX3, 60);
 
-  // Buildings
   for (let i = 0; i < WIDTH; i += 60) {
     const h = 90 + (i % 3) * 35;
     drawBuilding(i, GROUND_Y - h, 55, h);
   }
 
-  // Ground
   ctx.fillStyle = "#5fb05f";
   ctx.fillRect(0, GROUND_Y, WIDTH, HEIGHT - GROUND_Y);
 
   drawGrass();
   drawTreesFlowers();
 
-  // Pipes
   ctx.fillStyle = "#46aa64";
-  pipes.forEach(p => ctx.fillRect(p.x, p.y, PIPE_WIDTH, p.h));
+  pipes.forEach(p => {
+    ctx.fillRect(p.x, 0, PIPE_WIDTH, p.top);
+    ctx.fillRect(p.x, p.bottom, PIPE_WIDTH, HEIGHT);
+  });
 
-  // Bird
   ctx.drawImage(birdImg, bird.x, bird.y, bird.size, bird.size);
 
-  // Score
   ctx.fillStyle = "white";
   ctx.font = "22px Segoe UI";
   ctx.fillText("Score: " + score, 20, 35);
@@ -216,6 +217,7 @@ function draw() {
   }
 }
 
+/* ---------- Loop ---------- */
 function loop() {
   update();
   draw();
